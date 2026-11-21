@@ -114,6 +114,8 @@
         .result-block{margin-top:20px;padding:16px;background:#f0f7ff;border-radius:8px;}
         .item{padding:8px 0;border-bottom:1px solid #dde6f5;}
         .result-total{font-weight:bold;color:#0b7237;font-size:17px;margin-top:12px;}
+        .pure-profit{color:#165DFF;border-top:2px solid #B4D3FF;padding-top:10px;}
+        .pure-profit.negative{color:#F53F3F;}
         .none{color:#999;}
         .highlight{color:#d92d20;font-weight:bold;}
         .tip{font-size:13px;color:#666;margin:4px 0 12px;}
@@ -274,6 +276,8 @@
 <script>
 // ====================== Vue服装计算器JS ======================
 const { createApp, reactive, computed, ref, watch, nextTick } = Vue;
+// 共享给右侧快递工具：始终保存左侧当前订单的净利润
+let currentNetProfit = 0;
 createApp({
     setup() {
         const config = reactive({
@@ -509,6 +513,9 @@ createApp({
                 }
             });
         });
+        watch(() => result.value.profit, (profit) => {
+            currentNetProfit = Number(profit) || 0;
+        }, { immediate: true });
         watch(() => config.totalQty, () => { syncSource.value = 'price'; });
         const fmt = (n) => '¥' + Number(n).toFixed(2);
         return {
@@ -656,10 +663,12 @@ function calcPrice(){
     }
     const wKg = wg / 1000;
     let html = `<div class="item">解析后实际重量：${wg.toFixed(0)} g (${wKg.toFixed(3)} kg)</div>`;
+    let shippingFee = 0;
     if(wg <= 300){
         radioArea.classList.remove("hide");
         const styleVal = document.querySelector('input[name="style"]:checked').value;
         if(styleVal === "tshirt"){
+            shippingFee = 1.65;
             html += `<div class="item">款式：T恤圆领｜快递公司：极兔</div>`;
             html += `<div class="item">计算说明：重量≤300g，T恤圆领使用极兔，固定一口价，无续重无加收</div>`;
             html += `<div class="result-total">✅合计快递费：1.65 元</div>`;
@@ -668,6 +677,7 @@ function calcPrice(){
             // POLO衫≤300g走圆通，加0.1特殊加收
             const poloExtra = 0.1;
             const ytoTotal = ytoPrice + poloExtra;
+            shippingFee = ytoTotal;
             html += `<div class="item">款式：POLO衫｜快递公司：圆通</div>`;
             html += `<div class="item">计算说明：重量≤300g，POLO衫强制走圆通，续重单价${ytoPrice} +特殊加收${poloExtra}</div>`;
             html += `<div class="result-total">✅合计快递费：${ytoTotal.toFixed(2)} 元</div>`;
@@ -713,7 +723,11 @@ function calcPrice(){
             bestPrice = ytoTotal;
         }
         html += `<div class="result-total highlight">✅最优方案：${bestName}，${bestPrice.toFixed(2)}元</div>`;
+        shippingFee = bestPrice;
     }
+    // 纯利润 = 左侧服装订单净利润 - 本次采用的快递费
+    const pureProfit = Number((currentNetProfit - shippingFee).toFixed(2));
+    html += `<div class="result-total pure-profit${pureProfit < 0 ? ' negative' : ''}">纯利润：${pureProfit.toFixed(2)} 元</div>`;
     box.innerHTML = html;
 }
 </script>
