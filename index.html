@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>服装计价 + 快递费计价工具</title>
+    <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+        body{background:#F5F7FA;color:#1D2129;font-size:13px;min-height:100vh;padding:12px;max-width:1400px;margin:0 auto;}
+        /* 容器：左右并排，小屏幕自动上下 */
+        .two-col-wrap{
+            display:flex;
+            gap:16px;
+        }
+        .col-left{
+        
+        }
+        .col-right{
+          
+        }
+        @media (max-width:1100px){
+            .two-col-wrap{
+                flex-direction:column;
+            }
+        }
+        h2{margin-bottom:20px;color:#222;font-size:18px;}
+        /* ==========上方：服装计算器样式========== */
+        .card{background:#fff;border-radius:4px;padding:12px 12px 0 12px;width:100%}
+        .sum-card{background:#F0F7FF;border-radius:4px;margin-top:8px}
+        .sum-title{font-size:18px;font-weight:bold;padding:12px 12px 4px}
+        .list-wrap{padding:0 12px 12px;font-size:16px;display:flex;flex-direction:column;gap:6px}
+        .form-row-five{display:flex;gap:10px;margin-bottom:8px;align-items:center}
+        .form-row-five .hide-col{display:none}
+        .form-row-four-lock{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:8px}
+        .form-row-three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+        .form-item{display:flex;flex-direction:column;gap:2px}
+        label{font-size:14px;white-space:nowrap}
+        input,select{width:100%;height:26px;padding:0 7px;border:1px solid #E5E6EB;border-radius:3px;outline:none;font-size:14px}
+        input.req{background:#fff9cc}
+        input:focus{border-color:#165DFF}
+        .star{color:#f53f3f;margin-left:4px}
+        .lock{width:36px;height:18px;border-radius:9px;background:#ccc;position:relative;cursor:pointer;transition:.2s;margin:4px 0}
+        .lock::after{content:"";position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:20px;transition:.2s}
+        .lock.on{background:#165DFF}
+        .lock.on::after{left:2px}
+        input[disabled]{background:#F2F3F5;color:#86909C;cursor:not-allowed}
+        input[type="range"]{width:100%;margin:8px 0;height:14px;-webkit-appearance:none;background:#e5e6eb;border-radius:99px;outline:none}
+        input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#165DFF;cursor:pointer}
+        .slider-val{text-align:center;font-weight:bold;color:#165DFF;font-size:14px}
+        .pattern-wrap{border:1px solid #E5E6EB;border-radius:4px;padding:4px;margin-top:8px}
+        .pattern-block{padding:6px;background:#FAFAFA;border-radius:3px;margin-bottom:6px}
+        .pattern-block:last-child{margin-bottom:0}
+        .pattern-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
+        .pattern-header>span{flex:1;line-height:1.4;font-size:14px}
+        .pattern-header>div{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
+        .btn{border:none;padding:3px 5px;border-radius:3px;cursor:pointer;font-size:12px;color:#fff}
+        .btn-add{background:#00B42A}
+        .btn-del{background:#F53F3F}
+        .btn-tech{background:#FFCC00;color:#333}
+        .line-item{display:flex;justify-content:space-between;height:32px;align-items:center}
+        .orange{color:#FF7D00}
+        .summary{display:flex;flex-direction:column;gap:6px;padding-top:8px}
+        .cost-row{display:flex;justify-content:space-between;height:22px;align-items:center;font-size:16px}
+        .total{font-weight:bold;font-size:18px;color:#F53F3F}
+        .big{font-size:22px;color:#165DFF;font-weight:600}
+        .profit{font-size:18px;font-weight:bold;color:#00B42A;height:36px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+        .profit-content{display:flex;align-items:center;gap:6px}
+        .mode-btn{padding:4px 12px;font-size:12px;background:#165DFF;color:#fff;border:none;border-radius:4px;cursor:pointer}
+        .desc{font-size:11px;color:#F53F3F;text-align:center;line-height:1.4;margin-top:4px}
+        .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-start;justify-content:center;z-index:999;padding-top:80px}
+        .modal.show{display:flex}
+        .modal-box{background:#fff;border-radius:12px;padding:12px;box-shadow:0 8px 30px rgba(0,0,0,.15);width:80%;max-width:300px}
+        .modal-title{font-size:16px;font-weight:600;margin-bottom:16px;text-align:center}
+        .radio-item{display:flex;align-items:center;gap:10px;margin-bottom:4px;font-size:14px;padding:10px 12px;border:1px solid #E5E6EB;border-radius:8px;cursor:pointer}
+        .radio-item:hover{border-color:#B4D3FF;background:#F7FAFF}
+        .radio-item.active{border-color:#165DFF;background:#F0F7FF}
+        .radio-item label{flex:none;font-weight:bold;cursor:pointer}
+        .modal-btns{display:flex;gap:12px;margin-top:18px;justify-content:center}
+        .modal-btn{padding:7px 20px;border-radius:8px;cursor:pointer;font-size:14px;border:none}
+        .modal-confirm{background:#165DFF;color:#fff}
+        .modal-cancel{border:1px solid #DCDFE6;background:#fff}
+        /* ==========右侧：原版快递工具样式========== */
+        .express-card{background:#fff;padding:20px;border-radius:4px;width:100%;}
+        .row{margin:14px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+        .label-title{width:140px;font-weight:500;flex-shrink:0;}
+        .express-card input,.express-card select{font-size:15px;border:1px solid #ccc;border-radius:6px;width:100%;max-width:320px;}
+        /* 解决select文字被截断，完整显示省份名称 */
+        .express-card select{
+            text-overflow:clip;
+        }
+        .express-card button{padding:10px 22px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-size:15px;cursor:pointer;}
+        .express-card button:hover{background:#1d4ed8;}
+        .result-block{margin-top:20px;padding:16px;background:#f0f7ff;border-radius:8px;}
+        .item{padding:8px 0;border-bottom:1px solid #dde6f5;}
+        .result-total{font-weight:bold;color:#0b7237;font-size:17px;margin-top:12px;}
+        .none{color:#999;}
+        .highlight{color:#d92d20;font-weight:bold;}
+        .tip{font-size:13px;color:#666;margin:4px 0 12px;}
+        .radio-row{margin:14px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+        .radio-wrap{display:flex;gap:16px;}
+        .radio-wrap label{display:flex;align-items:center;gap:4px;font-size:15px;cursor:pointer;margin:0;}
+        .radio-wrap input[type="radio"]{width:auto;margin:0;}
+        .hide{display:none;}
+    </style>
+</head>
+<body>
+<div class="two-col-wrap">
+    <!-- 左列：服装计价Vue模块 -->
+    <div class="col-left">
+        <div id="app">
+            <div class="card">
+                <div v-show="fullMode" class="form-row-four-lock">
+                    <div class="form-item" v-for="(item,i) in lockItems" :key="i">
+                        <label>{{item.label}}</label>
+                        <div class="lock" :class="{on:locks[i]}" @click="toggleLock(i)"></div>
+                        <input type="number" v-model.number="config[item.key]" :disabled="!locks[i]" step="0.01">
+                    </div>
+                </div>
+                <div>
+                    <div class="form-row-five">
+                        <div class="form-item">
+                            <label>衣服成本(元)<span class="star">*</span></label>
+                            <input type="number" v-model.number="config.costCloth" class="req" step="0.5">
+                        </div>
+                        <div class="form-item">
+                            <label>总件数<span class="star">*</span></label>
+                            <input type="number" v-model.number="config.totalQty" min="1" class="req">
+                        </div>
+                        <div class="form-item">
+                            <label>单件价格(元)</label>
+                            <input type="number" v-model.number="config.priceUnit" step="0.1" class="req" @input="onPriceInput">
+                        </div>
+                    </div>
+                    <div>
+                        <input type="range" v-model.number="config.profitRate" min="0" max="100" @mousedown="dragStart" @touchstart="dragStart" @mouseup="dragEnd" @touchend="dragEnd" @input="onSliderInput">
+                        <div class="slider-val">滑动设置利润率：{{config.profitRate}} %</div>
+                    </div>
+                    <div class="pattern-wrap">
+                        <div v-for="(p,idx) in patterns" :key="p.id" class="pattern-block">
+                            <div class="pattern-header">
+                                <span>印{{p.symbol}}图案 {{techLabel(p.tech)}}</span>
+                                <div>
+                                    <button class="btn btn-tech" @click="openTechModal(idx)">更换工艺</button>
+                                    <button v-if="idx>0" class="btn btn-del" @click="removePattern(idx)">删除</button>
+                                    <button v-if="idx===0" class="btn btn-add" @click="addPattern">+ 添加图案</button>
+                                </div>
+                            </div>
+                            <div class="form-row-three">
+                                <div class="form-item">
+                                    <label>宽(cm)<span class="star">*</span></label>
+                                    <input type="number" v-model.number="p.width" class="req" step="0.01">
+                                </div>
+                                <div class="form-item">
+                                    <label>高(cm)<span class="star">*</span></label>
+                                    <input type="number" v-model.number="p.height" class="req" step="0.01">
+                                </div>
+                                <div class="form-item">
+                                    <label>印刷个数<span class="star">*</span></label>
+                                    <input type="number" v-model.number="p.count" min="1" class="req">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div v-show="fullMode" class="sum-card">
+                <div class="sum-title">订单成本明细</div>
+                <div class="list-wrap">
+                    <div class="line-item"><span>衣服总成本</span><span>{{fmt(result.clothTotal)}}</span></div>
+                    <div class="line-item"><span>总印刷工费</span><span>{{fmt(result.printTotal)}}</span></div>
+                    <div class="line-item"><span>总图纸费</span><span>{{fmt(result.drawTotal)}}</span></div>
+                    <div class="line-item"><span>样衣费</span><span>{{fmt(result.sampleFee)}}</span></div>
+                    <div class="line-item orange"><span>平台手续费</span><span>{{fmt(result.platformFee)}}</span></div>
+                    <div class="line-item orange"><span>发票费用</span><span>{{fmt(result.invoiceFee)}}</span></div>
+                    <div class="line-item orange"><span>成交推广扣费</span><span>{{fmt(result.promoteFee)}}</span></div>
+                    <div class="line-item orange"><span>客服提成</span><span>{{fmt(result.serviceFee)}}</span></div>
+                </div>
+            </div>
+            <div class="card summary">
+                <div class="cost-row total"><span>订单总成本</span><span>{{fmt(result.allCost)}}</span></div>
+                <div class="cost-row big"><span>成交额</span><span>{{fmt(result.orderTotal)}}</span></div>
+                <div class="profit">
+                    <div class="profit-content">净利润:<span>{{fmt(result.profit)}}</span> <span class="rate">(利润率:{{result.realRate.toFixed(2)}} %)</span></div>
+                    <button class="mode-btn" @click="fullMode=!fullMode">{{fullMode?'极简版':'完整版'}}</button>
+                </div>
+                <div class="desc">净利润 = 成交额 - 订单总成本（衣服、印刷、图纸、样衣、平台扣点、提成、推广）</div>
+            </div>
+            <div class="modal" :class="{show:showTechModal}" @click.self="showTechModal=false">
+                <div class="modal-box">
+                    <div class="modal-title">选择印制工艺</div>
+                    <div v-for="t in techOptions" :key="t" class="radio-item" :class="{active:tempTech===t}" @click="tempTech=t">
+                        <input type="radio" :value="t" v-model="tempTech" style="width:auto">
+                        <label>{{techLabel(t)}}</label>
+                    </div>
+                    <div class="modal-btns">
+                        <button class="modal-btn modal-cancel" @click="showTechModal=false">取消</button>
+                        <button class="modal-btn modal-confirm" @click="confirmTech">确定选择</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- 右列：原版独立快递费工具 -->
+    <div class="col-right">
+        <div class="express-card">
+            <h2>快递费计价工具</h2>
+            <div class="tip">重量框支持算式，例：2500、1200*2、800+1200、300*6</div>
+            <div class="row">
+                <div class="label-title">物品重量(克)：</div>
+                <input id="weightG" type="text" placeholder="输入克重或算式，如 1500*3">
+            </div>
+            <div id="radioArea" class="radio-row hide">
+                <div class="label-title">款式选择：</div>
+                <div class="radio-wrap">
+                    <label><input type="radio" name="style" value="tshirt" checked> T恤圆领</label>
+                    <label><input type="radio" name="style" value="polo"> POLO衫</label>
+                </div>
+            </div>
+            <div class="row">
+                <div class="label-title">目的省份：</div>
+                <select id="provinceSel"></select>
+            </div>
+            <div class="row">
+                <div class="label-title"></div>
+                <button onclick="calcPrice()">计算快递费用</button>
+            </div>
+            <div class="result-block" id="resultBox"></div>
+        </div>
+    </div>
+</div>
+<script>
+// ====================== Vue服装计算器JS ======================
+const { createApp, reactive, computed, ref, watch, nextTick } = Vue;
+createApp({
+    setup() {
+        const config = reactive({
+            costCloth: 8,
+            totalQty: 1,
+            priceUnit: 30,
+            profitRate: 45,
+            rateService: 3,
+            ratePlatform: 0.6,
+            rateInvoice: 3
+        });
+        // 删除单个印刷工费，锁列表移除该项
+        const lockItems = [
+            { key: 'rateService', label: '客服提点(%)' },
+            { key: 'ratePlatform', label: '平台扣点(%)' },
+            { key: 'rateInvoice', label: '发票扣点(%)' }
+        ];
+        const locks = reactive([false, false, false]);
+        const fullMode = ref(false);
+        const showTechModal = ref(false);
+        const tempTech = ref('');
+        const editIdx = ref(-1);
+        const isDragging = ref(false);
+        const syncSource = ref('price');
+        const circleNums = ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮'];
+        let patternId = 1;
+        const techOptions = ['烫画', '烫印', '刺绣', '丝印'];
+        const techLabels = {
+            '烫画': '烫画（默认工艺）',
+            '烫印': '烫印',
+            '刺绣': '刺绣（不足30件收30样衣费）',
+            '丝印': '丝印（20件起，印刷工费0元）'
+        };
+        const techLabel = (t) => techLabels[t] || t;
+        const patterns = reactive([{
+            id: patternId++,
+            symbol: circleNums[0],
+            tech: '烫画',
+            width: 28,
+            height: 28,
+            count: 1
+        }]);
+        const toggleLock = (i) => { locks[i] = !locks[i]; };
+        const addPattern = () => {
+            const idx = patterns.length;
+            patterns.push({
+                id: patternId++,
+                symbol: idx < circleNums.length ? circleNums[idx] : (idx + 1),
+                tech: '烫画',
+                width: 28,
+                height: 28,
+                count: 1
+            });
+        };
+        const removePattern = (idx) => { patterns.splice(idx, 1); };
+        const openTechModal = (idx) => {
+            editIdx.value = idx;
+            tempTech.value = patterns[idx].tech;
+            showTechModal.value = true;
+        };
+        const confirmTech = () => {
+            if (editIdx.value >= 0) patterns[editIdx.value].tech = tempTech.value;
+            showTechModal.value = false;
+        };
+        const dragStart = () => { isDragging.value = true; };
+        const dragEnd = () => { isDragging.value = false; };
+        const onSliderInput = () => {
+            isDragging.value = true;
+            syncSource.value = 'slider';
+            setTimeout(() => { isDragging.value = false; }, 150);
+        };
+        const onPriceInput = () => {
+            isDragging.value = false;
+            syncSource.value = 'price';
+        };
+        const getPrintUnitPrice = (qty) => {
+            if (qty < 3) return 2;
+            if (qty < 5) return 1.7;
+            if (qty < 10) return 1.2;
+            if (qty < 20) return 1;
+            return 0.8;
+        };
+        const round2 = (n) => Math.round(Number(n) * 100) / 100;
+        const result = computed(() => {
+            const qty = config.totalQty || 0;
+            const clothTotal = round2(config.costCloth * qty);
+            const printUnitPrice = getPrintUnitPrice(qty);
+            let drawTotal = 0;
+            let printTotal = 0;
+            let hasEmbroidery = false;
+            for (let i = 0; i < patterns.length; i++) {
+                const p = patterns[i];
+                const cnt = Number(p.count) || 0;
+                if (p.tech === '丝印') {
+                    printTotal += 0;
+                    drawTotal += qty * 1;
+                    continue;
+                }
+                // 刺绣：印刷工费强制为0，只计算图纸费
+                if(p.tech === '刺绣'){
+                    hasEmbroidery = true;
+                    drawTotal += cnt * qty * 2.5;
+                    continue;
+                }
+                const w = Number(p.width) || 0;
+                const h = Number(p.height) || 0;
+                if (p.tech === '烫画') {
+                    const wM = w / 100;
+                    const hM = h / 100;
+                    drawTotal += wM * hM * 21 * cnt * qty;
+                } else if (p.tech === '烫印') {
+                    const maxSide = Math.max(w, h);
+                    drawTotal += maxSide * 0.02895 * cnt * qty;
+                }
+                printTotal += cnt * qty * printUnitPrice;
+            }
+            drawTotal = round2(drawTotal);
+            printTotal = round2(printTotal);
+            const sampleFee = (hasEmbroidery && qty < 30) ? 30 : 0;
+            const promoteFee = 10;
+            const baseCost = round2(clothTotal + printTotal + drawTotal + sampleFee + promoteFee);
+            const serviceRate = config.rateService / 100;
+            const platformRate = config.ratePlatform / 100;
+            const invoiceRate = config.rateInvoice / 100;
+            let orderTotal = 0;
+            if (syncSource.value === 'slider') {
+                const targetRate = config.profitRate / 100;
+                const denom = 1 - serviceRate - platformRate - invoiceRate - targetRate;
+                if (denom > 0 && qty > 0) {
+                    orderTotal = round2(baseCost / denom);
+                }
+            } else {
+                orderTotal = round2((config.priceUnit || 0) * qty);
+            }
+            const serviceFee = round2(orderTotal * serviceRate);
+            const platformFee = round2(orderTotal * platformRate);
+            const invoiceFee = round2(orderTotal * invoiceRate);
+            const allCost = round2(baseCost + serviceFee + platformFee + invoiceFee);
+            const profit = round2(orderTotal - allCost);
+            const realRate = orderTotal > 0 ? round2((profit / orderTotal) * 100) : 0;
+            return {
+                clothTotal, printTotal, drawTotal, sampleFee,
+                platformFee, invoiceFee, promoteFee, serviceFee,
+                allCost, orderTotal, profit, realRate
+            };
+        });
+        watch(result, (r) => {
+            nextTick(() => {
+                const qty = config.totalQty || 0;
+                if (syncSource.value === 'slider') {
+                    if (qty > 0 && r.orderTotal > 0) {
+                        const newPrice = parseFloat((r.orderTotal / qty).toFixed(2));
+                        if (Math.abs(config.priceUnit - newPrice) > 0.005) {
+                            config.priceUnit = newPrice;
+                        }
+                    }
+                } else {
+                    const newRate = Math.max(0, Math.min(100, Math.round(r.realRate)));
+                    if (config.profitRate !== newRate) {
+                        config.profitRate = newRate;
+                    }
+                }
+            });
+        });
+        watch(() => config.totalQty, () => { syncSource.value = 'price'; });
+        const fmt = (n) => '¥' + Number(n).toFixed(2);
+        return {
+            config, lockItems, locks, fullMode, patterns, techOptions, techLabel,
+            showTechModal, tempTech, result,
+            toggleLock, addPattern, removePattern, openTechModal, confirmTech,
+            dragStart, dragEnd, onSliderInput, onPriceInput, fmt
+        };
+    }
+}).mount('#app');
+// ====================== 快递工具JS（已更新圆通计费规则） ======================
+const ytoAddPriceMap = {
+    "广东省":1,
+    "四川省":1,
+    "安徽省":2,
+    "福建省":2,
+    "广西壮族自治区":2,
+    "湖北省":2,
+    "湖南省":2,
+    "江苏省":2,
+    "江西省":2,
+    "重庆":2,
+    "贵州省":2.5,
+    "海南省":2.5,
+    "河北省":2.5,
+    "河南省":2.5,
+    "山东省":2.5,
+    "山西省":2.5,
+    "陕西省":2.5,
+    "上海":2.5,
+    "天津":2.5,
+    "新疆维吾尔自治区":12,
+    "浙江省":2.5,
+    "北京":2.8,
+    "黑龙江省":3.3,
+    "吉林省":3.3,
+    "辽宁省":3.3,
+    "甘肃省":5.3,
+    "内蒙古自治区":5.3,
+    "宁夏回族自治区":5.3,
+    "青海省":5.3,
+    "云南省":2.5,
+    "西藏自治区":13
+};
+const stoAddPriceMap = {
+    "广东省":1,
+    "深圳":1,
+    "安徽省":1.6,
+    "北京":1.6,
+    "福建省":1.6,
+    "广西壮族自治区":1.6,
+    "海南省":1.6,
+    "河北省":1.6,
+    "河南省":1.6,
+    "湖北省":1.6,
+    "湖南省":1.6,
+    "江苏省":1.6,
+    "江西省":1.6,
+    "山东省":1.6,
+    "上海":1.6,
+    "天津":1.6,
+    "浙江省":1.6,
+    "贵州省":2,
+    "山西省":2,
+    "陕西省":2,
+    "四川省":2,
+    "云南省":2,
+    "重庆":2,
+    "黑龙江省":2.5,
+    "吉林省":2.5,
+    "辽宁省":2.5,
+    "甘肃省":3,
+    "内蒙古自治区":3,
+    "宁夏回族自治区":3,
+    "青海省":3,
+    "新疆维吾尔自治区":8,
+    "西藏自治区":11
+};
+// 申通分省份面单费
+const stoBaseFeeMap = {
+    "广东省": 4.2,
+    "深圳": 4.7,
+    "安徽省": 4.2,
+    "北京": 5.2,
+    "福建省": 4.2,
+    "广西壮族自治区": 4.2,
+    "海南省": 4.2,
+    "河北省": 4.2,
+    "河南省": 4.2,
+    "湖北省": 4.2,
+    "湖南省": 4.2,
+    "江苏省": 4.2,
+    "江西省": 4.2,
+    "山东省": 4.2,
+    "上海": 4.7,
+    "天津": 4.2,
+    "浙江省": 4.2,
+    "贵州省": 4.2,
+    "山西省": 4.2,
+    "陕西省": 4.2,
+    "四川省": 4.2,
+    "云南省": 4.2,
+    "重庆": 4.2,
+    "黑龙江省": 4.2,
+    "吉林省": 4.2,
+    "辽宁省": 4.2,
+    "甘肃省": 4.2,
+    "内蒙古自治区": 4.2,
+    "宁夏回族自治区": 4.2,
+    "青海省": 4.2,
+    "新疆维吾尔自治区": 4.2,
+    "西藏自治区": 4.2
+};
+const allProvinceList = Object.keys(ytoAddPriceMap).concat(["西藏自治区"]);
+const sel = document.getElementById("provinceSel");
+allProvinceList.forEach(p=>{
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.innerText = p;
+    sel.appendChild(opt);
+});
+const radioArea = document.getElementById("radioArea");
+function safeEvalMath(str){
+    str = str.replace(/\s/g,"");
+    if(!/^[\d\.\+\-\*\/]+$/.test(str)) return NaN;
+    try{
+        const res = new Function(`return ${str}`)();
+        return Number(res);
+    }catch(e){
+        return NaN;
+    }
+}
+function calcPrice(){
+    const inputText = document.getElementById("weightG").value.trim();
+    const prov = document.getElementById("provinceSel").value;
+    const box = document.getElementById("resultBox");
+    box.innerHTML = "";
+    const wg = safeEvalMath(inputText);
+    if(isNaN(wg) || wg <= 0){
+        box.innerHTML = `<div class="none">❌重量格式错误，请输入数字或合法算式（支持 +‑*/）</div>`;
+        radioArea.classList.add("hide");
+        return;
+    }
+    const wKg = wg / 1000;
+    let html = `<div class="item">解析后实际重量：${wg.toFixed(0)} g (${wKg.toFixed(3)} kg)</div>`;
+    if(wg <= 300){
+        radioArea.classList.remove("hide");
+        const styleVal = document.querySelector('input[name="style"]:checked').value;
+        if(styleVal === "tshirt"){
+            html += `<div class="item">款式：T恤圆领｜快递公司：极兔</div>`;
+            html += `<div class="item">计算说明：重量≤300g，T恤圆领使用极兔，固定一口价，无续重无加收</div>`;
+            html += `<div class="result-total">✅合计快递费：1.65 元</div>`;
+        }else{
+            const ytoPrice = ytoAddPriceMap[prov];
+            // POLO衫≤300g走圆通，加0.1特殊加收
+            const poloExtra = 0.1;
+            const ytoTotal = ytoPrice + poloExtra;
+            html += `<div class="item">款式：POLO衫｜快递公司：圆通</div>`;
+            html += `<div class="item">计算说明：重量≤300g，POLO衫强制走圆通，续重单价${ytoPrice} +特殊加收${poloExtra}</div>`;
+            html += `<div class="result-total">✅合计快递费：${ytoTotal.toFixed(2)} 元</div>`;
+        }
+    } else {
+        radioArea.classList.add("hide");
+        const ytoUnit = ytoAddPriceMap[prov];
+        const ytoExtra = Number((0.06 + Math.random() * 0.04).toFixed(2));
+        
+        // === 圆通新算法 ===
+        let ytoTotal = 0;
+        let ytoDesc = "";
+        if (wg > 3000) {
+            // >3000g: 重量*续重 + 面单增收1 + 特殊加收
+            ytoTotal = Number((wKg * ytoUnit + 1 + ytoExtra).toFixed(2));
+            ytoDesc = `${wKg}kg ×续重单价${ytoUnit} +面单增收1 +特殊加收${ytoExtra}`;
+        } else {
+            // ≤3000g: 续重单价 + 特殊加收
+            ytoTotal = Number((ytoUnit + ytoExtra).toFixed(2));
+            ytoDesc = `续重单价${ytoUnit} +特殊加收${ytoExtra}`;
+        }
+
+        const stoUnit = stoAddPriceMap[prov];
+        const stoBase = stoBaseFeeMap[prov] || 4.2;
+        const stoExtra = Number((0.1 + Math.random() * 0.2).toFixed(2));
+        const stoTotal = Number((wKg * stoUnit + stoBase + stoExtra).toFixed(2));
+        
+        // 重量>3000g 优先申通：申通报价排最前，并直接作为最优方案
+        const preferSto = wg > 3000;
+        if (preferSto) {
+            html += `<div class="item">【申通】${wKg}kg ×续重${stoUnit} +面单${stoBase} +特殊加收${stoExtra} = ${stoTotal}元</div>`;
+            html += `<div class="item">【圆通】${ytoDesc} = ${ytoTotal}元</div>`;
+        } else {
+            html += `<div class="item">【圆通】${ytoDesc} = ${ytoTotal}元</div>`;
+            html += `<div class="item">【申通】${wKg}kg ×续重${stoUnit} +面单${stoBase} +特殊加收${stoExtra} = ${stoTotal}元</div>`;
+        }
+        let bestName,bestPrice;
+        if (preferSto || stoTotal <= ytoTotal) {
+            bestName = "申通";
+            bestPrice = stoTotal;
+        } else {
+            bestName = "圆通";
+            bestPrice = ytoTotal;
+        }
+        html += `<div class="result-total highlight">✅最优方案：${bestName}，${bestPrice.toFixed(2)}元</div>`;
+    }
+    box.innerHTML = html;
+}
+</script>
+</body>
+</html>
