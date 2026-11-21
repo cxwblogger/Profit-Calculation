@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>服装计价 + 快递费计价工具</title>
-    <script src="https://unpkg.com/vue@3.4.21/dist/vue.global.prod.js"></script>
+    <script src="https://fastly.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.prod.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
         body{background:#F5F7FA;color:#1D2129;font-size:13px;min-height:100vh;padding:12px;max-width:1400px;margin:0 auto;}
@@ -14,10 +14,10 @@
             gap:16px;
         }
         .col-left{
-        
+
         }
         .col-right{
-          
+
         }
         @media (max-width:1100px){
             .two-col-wrap{
@@ -49,8 +49,16 @@
         input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#165DFF;cursor:pointer}
         .slider-val{text-align:center;font-weight:bold;color:#165DFF;font-size:14px}
         .pattern-wrap{border:1px solid #E5E6EB;border-radius:4px;padding:4px;margin-top:8px}
-        .pattern-block{padding:6px;background:#FAFAFA;border-radius:3px;margin-bottom:6px}
+        .pattern-size-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding:6px;margin-bottom:6px;background:#F0F7FF;border-radius:3px}
+        .pattern-size-title{font-size:13px;color:#4E5969}
+        .pattern-size-actions{display:flex;gap:6px}
+        .btn-size{border:1px solid #165DFF;background:#fff;color:#165DFF;border-radius:3px;padding:5px 10px;cursor:pointer;font-size:12px;font-weight:600}
+        .btn-size:hover{background:#165DFF;color:#fff}
+        .pattern-current{padding:0 6px 6px;font-size:12px;color:#165DFF}
+        .pattern-block{padding:6px;background:#FAFAFA;border-radius:3px;margin-bottom:6px;cursor:pointer;transition:background .15s,box-shadow .15s}
+        .pattern-block.active{background:#F0F7FF;box-shadow:inset 0 0 0 2px #165DFF}
         .pattern-block:last-child{margin-bottom:0}
+        .pattern-selected-tag{display:inline-block;margin-left:6px;padding:1px 5px;background:#165DFF;color:#fff;border-radius:3px;font-size:11px;font-weight:400;vertical-align:1px}
         .pattern-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px}
         .pattern-header>span{flex:1;line-height:1.4;font-size:14px}
         .pattern-header>div{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end}
@@ -80,6 +88,18 @@
         .modal-btn{padding:7px 20px;border-radius:8px;cursor:pointer;font-size:14px;border:none}
         .modal-confirm{background:#165DFF;color:#fff}
         .modal-cancel{border:1px solid #DCDFE6;background:#fff}
+        /* ==========衣服款式快捷选择========== */
+        .style-picker{margin-bottom:12px;padding:10px;background:#F7F8FA;border:1px solid #E5E6EB;border-radius:4px}
+        .style-picker-title{margin-bottom:8px;font-size:14px;font-weight:600;color:#4E5969}
+        .style-group-list,.style-model-list{display:flex;flex-wrap:wrap;gap:8px}
+        .style-group-btn,.style-model-btn{border:1px solid #C9CDD4;background:#fff;color:#1D2129;border-radius:4px;cursor:pointer;font-size:13px;transition:.15s}
+        .style-group-btn{min-width:88px;padding:7px 12px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
+        .style-group-btn:hover,.style-model-btn:hover{border-color:#165DFF;color:#165DFF}
+        .style-group-btn.active{background:#165DFF;border-color:#165DFF;color:#fff}
+        .style-model-list{margin-top:8px;padding-top:8px;border-top:1px dashed #C9CDD4}
+        .style-model-btn{padding:6px 10px;display:flex;align-items:center;gap:6px}
+        .style-model-btn .model-cost{color:#F53F3F;font-size:12px}
+        .style-model-btn.active{background:#E8F3FF;border-color:#165DFF;color:#165DFF;font-weight:600}
         /* ==========右侧：原版快递工具样式========== */
         .express-card{background:#fff;padding:20px;border-radius:4px;width:100%;}
         .row{margin:14px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -110,6 +130,20 @@
     <div class="col-left">
         <div id="app">
             <div class="card">
+                <!-- 衣服款式快捷选择：点击分类展开，点击款号自动填入成本 -->
+                <div class="style-picker">
+                    <div class="style-picker-title">衣服款式快捷选择</div>
+                    <div class="style-group-list">
+                        <button type="button" v-for="group in styleGroups" :key="group.name" class="style-group-btn" :class="{active:activeStyleGroup===group.name}" @click="toggleStyleGroup(group.name)">
+                            <span>{{group.name}}</span><span>{{activeStyleGroup===group.name?'▾':'▸'}}</span>
+                        </button>
+                    </div>
+                    <div v-if="activeStyleGroup" class="style-model-list">
+                        <button type="button" v-for="item in currentStyleModels" :key="activeStyleGroup + '-' + item.name" class="style-model-btn" :class="{active:selectedStyleModel===item.name}" @click="selectStyleModel(item)">
+                            <span>{{item.name}}</span><span class="model-cost">¥{{item.cost}}</span>
+                        </button>
+                    </div>
+                </div>
                 <div v-show="fullMode" class="form-row-four-lock">
                     <div class="form-item" v-for="(item,i) in lockItems" :key="i">
                         <label>{{item.label}}</label>
@@ -137,13 +171,21 @@
                         <div class="slider-val">滑动设置利润率：{{config.profitRate}} %</div>
                     </div>
                     <div class="pattern-wrap">
-                        <div v-for="(p,idx) in patterns" :key="p.id" class="pattern-block">
+                        <div class="pattern-size-toolbar">
+                            <span class="pattern-size-title">快捷设置选中图案尺寸</span>
+                            <div class="pattern-size-actions">
+                                <button type="button" class="btn-size" @click="setPatternSize(30)">大图（30cm）</button>
+                                <button type="button" class="btn-size" @click="setPatternSize(8)">小图（8cm）</button>
+                            </div>
+                        </div>
+                        <div class="pattern-current">当前选中：印{{patterns[activePatternIndex].symbol}}图案（{{patterns[activePatternIndex].width}} × {{patterns[activePatternIndex].height}} cm）</div>
+                        <div v-for="(p,idx) in patterns" :key="p.id" class="pattern-block" :class="{active:activePatternIndex===idx}" @click="selectPattern(idx)">
                             <div class="pattern-header">
-                                <span>印{{p.symbol}}图案 {{techLabel(p.tech)}}</span>
+                                <span>印{{p.symbol}}图案 {{techLabel(p.tech)}}<span v-if="patterns.length>1 && activePatternIndex===idx" class="pattern-selected-tag">已选中</span></span>
                                 <div>
                                     <button class="btn btn-tech" @click="openTechModal(idx)">更换工艺</button>
-                                    <button v-if="idx>0" class="btn btn-del" @click="removePattern(idx)">删除</button>
-                                    <button v-if="idx===0" class="btn btn-add" @click="addPattern">+ 添加图案</button>
+                                    <button v-if="idx>0" class="btn btn-del" @click.stop="removePattern(idx)">删除</button>
+                                    <button v-if="idx===0" class="btn btn-add" @click.stop="addPattern">+ 添加图案</button>
                                 </div>
                             </div>
                             <div class="form-row-three">
@@ -274,6 +316,67 @@ createApp({
             height: 28,
             count: 1
         }]);
+        // 当前选中的印制图案：大图/小图按钮只覆盖该图案的宽高
+        const activePatternIndex = ref(0);
+        const selectPattern = (idx) => {
+            activePatternIndex.value = idx;
+        };
+        const setPatternSize = (size) => {
+            const currentPattern = patterns[activePatternIndex.value];
+            if (!currentPattern) return;
+            currentPattern.width = size;
+            currentPattern.height = size;
+        };
+        // 衣服分类与款号成本：点击款号只修改衣服成本，其余计算逻辑保持不变
+        const styleGroups = [
+            {
+                name: 'T恤',
+                models: [
+                    { name: 'yl01白', cost: 4.5 },
+                    { name: 'yl01/sm01', cost: 6.5 },
+                    { name: 'cm180白', cost: 8 },
+                    { name: 'cm180', cost: 9 },
+                    { name: '01d', cost: 13.5 },
+                    { name: 'a16白', cost: 14 },
+                    { name: 'a16', cost: 16 }
+                ]
+            },
+            {
+                name: 'POLO衫',
+                models: [
+                    { name: '699', cost: 8 },
+                    { name: '698', cost: 8 },
+                    { name: 't8012', cost: 10 },
+                    { name: 'A1118', cost: 13 }
+                ]
+            },
+            {
+                name: '卫衣',
+                models: [
+                    { name: '2023', cost: 16 },
+                    { name: '2022', cost: 19 },
+                    { name: '677', cost: 18.2 },
+                    { name: '681', cost: 26 },
+                    { name: '701', cost: 22.5 },
+                    { name: '702', cost: 29 },
+                    { name: '996', cost: 26 },
+                    { name: '998', cost: 32 }
+                ]
+            }
+        ];
+        const activeStyleGroup = ref('');
+        const selectedStyleModel = ref('');
+        const currentStyleModels = computed(() => {
+            const group = styleGroups.find(item => item.name === activeStyleGroup.value);
+            return group ? group.models : [];
+        });
+        const toggleStyleGroup = (name) => {
+            activeStyleGroup.value = activeStyleGroup.value === name ? '' : name;
+        };
+        const selectStyleModel = (item) => {
+            config.costCloth = item.cost;
+            selectedStyleModel.value = item.name;
+        };
         const toggleLock = (i) => { locks[i] = !locks[i]; };
         const addPattern = () => {
             const idx = patterns.length;
@@ -285,9 +388,19 @@ createApp({
                 height: 28,
                 count: 1
             });
+            activePatternIndex.value = patterns.length - 1;
         };
-        const removePattern = (idx) => { patterns.splice(idx, 1); };
+        const removePattern = (idx) => {
+            patterns.splice(idx, 1);
+            if (activePatternIndex.value === idx) {
+                activePatternIndex.value = Math.max(0, idx - 1);
+            } else if (activePatternIndex.value > idx) {
+                activePatternIndex.value -= 1;
+            }
+            activePatternIndex.value = Math.min(activePatternIndex.value, patterns.length - 1);
+        };
         const openTechModal = (idx) => {
+            activePatternIndex.value = idx;
             editIdx.value = idx;
             tempTech.value = patterns[idx].tech;
             showTechModal.value = true;
@@ -400,7 +513,9 @@ createApp({
         const fmt = (n) => '¥' + Number(n).toFixed(2);
         return {
             config, lockItems, locks, fullMode, patterns, techOptions, techLabel,
-            showTechModal, tempTech, result,
+            showTechModal, tempTech, result, styleGroups, activeStyleGroup,
+            selectedStyleModel, currentStyleModels, activePatternIndex,
+            toggleStyleGroup, selectStyleModel, selectPattern, setPatternSize,
             toggleLock, addPattern, removePattern, openTechModal, confirmTech,
             dragStart, dragEnd, onSliderInput, onPriceInput, fmt
         };
@@ -561,7 +676,7 @@ function calcPrice(){
         radioArea.classList.add("hide");
         const ytoUnit = ytoAddPriceMap[prov];
         const ytoExtra = Number((0.06 + Math.random() * 0.04).toFixed(2));
-        
+
         // === 圆通新算法 ===
         let ytoTotal = 0;
         let ytoDesc = "";
@@ -579,7 +694,7 @@ function calcPrice(){
         const stoBase = stoBaseFeeMap[prov] || 4.2;
         const stoExtra = Number((0.1 + Math.random() * 0.2).toFixed(2));
         const stoTotal = Number((wKg * stoUnit + stoBase + stoExtra).toFixed(2));
-        
+
         // 重量>3000g 优先申通：申通报价排最前，并直接作为最优方案
         const preferSto = wg > 3000;
         if (preferSto) {
